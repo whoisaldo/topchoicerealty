@@ -3,31 +3,41 @@
   "version": "1.0.0",
   "private": true,
   "description": "Real estate web application for Top Choice Realty",
+  "type": "module",
   "scripts": {
-    "dev:api": "pnpm --filter api dev",
     "dev:web": "pnpm --filter web dev",
-    "dev": "concurrently \"pnpm dev:api\" \"wait-on http://localhost:8080/api/health && pnpm dev:web\"",
-    "build:api": "pnpm --filter api build",
-    "build:web": "pnpm --filter web build",
-    "build": "pnpm build:api && pnpm build:web",
-    "lint": "pnpm --filter \"./apps/**\" lint",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm --filter web lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "typecheck": "pnpm --filter \"./apps/**\" typecheck",
-    "seed": "pnpm --filter api seed"
+    "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter web typecheck",
+    "test": "tsx --test tests/*.test.ts",
+    "seed": "tsx scripts/seed.ts",
+    "create-user": "tsx scripts/create-user.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.1",
+    "bcryptjs": "^3.0.2",
+    "cookie": "^0.6.0",
+    "jose": "^5.9.6",
+    "nodemailer": "^6.9.16",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/cookie": "^0.6.0",
+    "@types/node": "^20.11.16",
+    "@types/nodemailer": "^6.4.17",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
-    "concurrently": "^8.2.2",
+    "@vercel/node": "^3.2.29",
+    "dotenv": "^16.4.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.2.5",
-    "typescript": "^5.3.3",
-    "wait-on": "^7.2.0"
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": "22.x",
     "pnpm": ">=8.0.0"
   }
 }
-

@@ -13,6 +13,7 @@ import { Login } from './routes/Login';
 import { Dashboard } from './routes/Dashboard';
 import { Profile } from './routes/Profile';
 import { Customers } from './routes/Customers';
+import { NotFound } from './routes/NotFound';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,21 +46,28 @@ function App() {
                   <Route path="/profile" element={<Profile />} />
                 </Route>
 
-                {/* 404 */}
-                <Route
-                  path="*"
-                  element={
-                    <div className="max-w-7xl mx-auto px-4 py-12 text-center">
-                      <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                      <p className="text-gray-600">Page not found</p>
-                    </div>
-                  }
-                />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <Footer />
           </div>
-          <Toaster position="top-right" />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: '#111111',
+                color: '#fafaf9',
+                border: '1px solid rgba(212, 175, 55, 0.35)',
+                borderRadius: '0.75rem',
+              },
+              success: {
+                iconTheme: { primary: '#d4af37', secondary: '#111111' },
+              },
+              error: {
+                iconTheme: { primary: '#ef4444', secondary: '#ffffff' },
+              },
+            }}
+          />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
@@ -67,4 +75,3 @@ function App() {
 }
 
 export default App;
-

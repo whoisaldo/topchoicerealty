@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { User, Listing, Inquiry, Customer, PaginatedListings, ListingsQuery } from './types';
+import type { User, Listing, Customer, PaginatedListings, ListingsQuery } from './types';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',

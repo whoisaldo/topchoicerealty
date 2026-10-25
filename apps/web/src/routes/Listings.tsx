@@ -1,9 +1,17 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight, Home, Search } from 'lucide-react';
 import { listingsApi } from '../lib/api';
-import { ListingCard } from '../components/ListingCard';
-import { FormInput } from '../components/FormInput';
 import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
+import { FormInput } from '../components/FormInput';
+import { ListingCard } from '../components/ListingCard';
+import { PageHeader } from '../components/PageHeader';
+import { Reveal } from '../components/Reveal';
+import { Select } from '../components/Select';
+import { ListingCardSkeleton } from '../components/Skeleton';
 
 export function Listings() {
   const [filters, setFilters] = useState({
@@ -15,7 +23,7 @@ export function Listings() {
     page: 1,
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['listings', filters],
     queryFn: () =>
       listingsApi.getAll({
@@ -41,70 +49,60 @@ export function Listings() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const listings = data?.data.listings;
+  const pagination = data?.data.pagination;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">
-            Browse <span className="text-gold">Listings</span>
-          </h1>
-          <div className="w-20 h-1 bg-gradient-gold mt-2"></div>
-        </div>
+        <PageHeader title="Browse" accent="Listings" />
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border-2 border-gold/10">
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-            <span className="text-gold mr-2">🔍</span> Filter Results
+        <Card className="mb-8">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Search className="h-5 w-5 text-gold" aria-hidden="true" />
+            Filter Results
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <FormInput
-            label="Search"
-            placeholder="Search by title or address"
-            value={filters.q}
-            onChange={(e) => handleFilterChange('q', e.target.value)}
-          />
+            <FormInput
+              label="Search"
+              placeholder="Search by title or address"
+              value={filters.q}
+              onChange={(e) => handleFilterChange('q', e.target.value)}
+            />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Neighborhood
-            </label>
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            <Select
+              label="Neighborhood"
               value={filters.neighborhood}
               onChange={(e) => handleFilterChange('neighborhood', e.target.value)}
             >
               <option value="">All Neighborhoods</option>
-              {neighborhoodsData?.data.neighborhoods.map((n) => (
+              {neighborhoodsData?.data.neighborhoods?.map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
 
-          <FormInput
-            label="Min Price"
-            type="number"
-            placeholder="Min"
-            value={filters.minPrice}
-            onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-          />
+            <FormInput
+              label="Min Price"
+              type="number"
+              placeholder="Min"
+              value={filters.minPrice}
+              onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+            />
 
-          <FormInput
-            label="Max Price"
-            type="number"
-            placeholder="Max"
-            value={filters.maxPrice}
-            onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-          />
+            <FormInput
+              label="Max Price"
+              type="number"
+              placeholder="Max"
+              value={filters.maxPrice}
+              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+            />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Min Bedrooms
-            </label>
-            <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            <Select
+              label="Min Bedrooms"
               value={filters.beds}
               onChange={(e) => handleFilterChange('beds', e.target.value)}
             >
@@ -114,79 +112,70 @@ export function Listings() {
               <option value="3">3+</option>
               <option value="4">4+</option>
               <option value="5">5+</option>
-            </select>
+            </Select>
           </div>
-        </div>
-        </div>
+        </Card>
 
         {/* Results */}
-          {isLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-gold mx-auto"></div>
-              <p className="mt-4 text-gray-700 font-medium animate-pulse">Loading listings...</p>
-            </div>
-        ) : data?.data.listings.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-lg border-2 border-gold/10">
-            <svg
-              className="mx-auto h-16 w-16 text-gold"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-              />
-            </svg>
-            <h3 className="mt-4 text-lg font-bold text-gray-900">No listings found</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              Try adjusting your filters to see more results
-            </p>
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <ListingCardSkeleton key={index} />
+            ))}
           </div>
+        ) : isError ? (
+          <ErrorState
+            title="Unable to load listings"
+            description="Something went wrong while fetching listings. Please try again."
+            onRetry={() => refetch()}
+          />
+        ) : !listings || listings.length === 0 ? (
+          <EmptyState
+            icon={Home}
+            title="No listings found"
+            description="Try adjusting your filters to see more results"
+          />
         ) : (
           <>
-            <div className="mb-4 text-sm font-medium text-gray-700 bg-white px-4 py-2 rounded-lg inline-block border-l-4 border-gold">
-              📊 Showing {data?.data.listings.length} of {data?.data.pagination.total} listings
+            <div className="mb-4 inline-block rounded-lg border-l-4 border-gold bg-white px-4 py-2 text-sm font-medium text-gray-700">
+              Showing {listings.length} of {pagination?.total ?? listings.length} listings
             </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {data?.data.listings.map((listing, index) => (
-                  <div 
-                    key={listing._id} 
-                    className={`animate-fade-in-up animate-delay-${(index % 3 + 1) * 100}`}
-                  >
-                    <ListingCard listing={listing} />
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {listings.map((listing, index) => (
+                <Reveal key={listing._id} delay={(index % 3) * 100}>
+                  <ListingCard listing={listing} />
+                </Reveal>
+              ))}
+            </div>
 
             {/* Pagination */}
-            {data && data.data.pagination.totalPages > 1 && (
-              <div className="flex justify-center items-center space-x-4 bg-white p-4 rounded-xl shadow-lg border-2 border-gold/10">
+            {pagination && pagination.totalPages > 1 && (
+              <Card className="flex items-center justify-center gap-4 p-4">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={filters.page === 1}
                   onClick={() => handlePageChange(filters.page - 1)}
                 >
-                  ← Previous
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                  Previous
                 </Button>
 
-                <span className="text-sm font-semibold text-gray-700 px-4 py-2 bg-gold/10 rounded-lg border border-gold/30">
-                  Page {filters.page} of {data.data.pagination.totalPages}
+                <span className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gray-700">
+                  Page {filters.page} of {pagination.totalPages}
                 </span>
 
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={filters.page === data.data.pagination.totalPages}
+                  disabled={filters.page === pagination.totalPages}
                   onClick={() => handlePageChange(filters.page + 1)}
                 >
-                  Next →
+                  Next
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </Button>
-              </div>
+              </Card>
             )}
           </>
         )}
@@ -194,4 +183,3 @@ export function Listings() {
     </div>
   );
 }
-
