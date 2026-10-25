@@ -36,6 +36,9 @@ deployment at 12 functions, and there are 15 endpoints, so `vercel.json` rewrite
 
 ## Setup
 
+Use Node.js 22 and pnpm 10. The locked Supabase client requires native WebSocket
+support and cannot start on Node.js 20.
+
 ```bash
 pnpm install
 cp env.example .env      # fill in Supabase URL, service role key, JWT secret
@@ -48,6 +51,10 @@ pnpm seed                # demo data: 3 agents, 8 listings
 vercel dev               # full stack: SPA + /api functions
 pnpm dev:web             # frontend only (API calls will fail)
 ```
+
+Run `pnpm typecheck`, `pnpm test`, `pnpm lint`, and `pnpm build` before opening a
+pull request. The API smoke tests use placeholder configuration and block network
+access; they do not need a database or SMTP account.
 
 Demo accounts after seeding — password `test12345`:
 `john.doe@`, `jane.lee@`, `ola.tleis@` `topchoicerealty.com`.

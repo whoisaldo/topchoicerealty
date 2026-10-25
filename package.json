@@ -10,6 +10,7 @@
     "lint": "pnpm --filter web lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "tsc -p tsconfig.json --noEmit && pnpm --filter web typecheck",
+    "test": "tsx --test tests/*.test.ts",
     "seed": "tsx scripts/seed.ts",
     "create-user": "tsx scripts/create-user.ts"
   },
@@ -36,7 +37,7 @@
     "typescript": "^5.3.3"
   },
   "engines": {
-    "node": ">=18.0.0",
+    "node": "22.x",
     "pnpm": ">=8.0.0"
   }
 }
