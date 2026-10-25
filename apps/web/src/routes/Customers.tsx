@@ -3,36 +3,55 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
+import { Pencil, Plus, Save, Trash2, Users } from 'lucide-react';
 import { customersApi } from '../lib/api';
-import { z } from 'zod';
+import { customerSchema, CustomerInput } from '../lib/schemas';
+import { ApiError, handleApiError } from '../lib/errorHandler';
 import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { FormInput } from '../components/FormInput';
 import { FormTextarea } from '../components/FormTextarea';
+import { PageHeader } from '../components/PageHeader';
+import { TableSkeleton } from '../components/Skeleton';
 import { formatPrice, formatDate } from '../lib/utils';
 import type { Customer, Listing } from '../lib/types';
 
-const customerSchema = z.object({
-  firstName: z.string().min(2),
-  lastName: z.string().min(2),
-  email: z.string().email(),
-  phone: z.string().min(10),
-  address: z.string().optional(),
-  purchaseDate: z.string().optional(),
-  purchasePrice: z.number().optional(),
-  notes: z.string().optional(),
-});
-
-type CustomerForm = z.infer<typeof customerSchema>;
+const EMPTY_CUSTOMER_FORM = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  address: '',
+  purchaseDate: '',
+  purchasePrice: undefined,
+  notes: '',
+};
 
 export function Customers() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['customers', searchQuery],
     queryFn: () => customersApi.getAll({ q: searchQuery || undefined }),
+  });
+
+  const customers = data?.data.customers;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<CustomerInput>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: EMPTY_CUSTOMER_FORM,
   });
 
   const createMutation = useMutation({
@@ -41,19 +60,25 @@ export function Customers() {
       toast.success('Customer added successfully!');
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setIsCreating(false);
-      reset();
+      reset(EMPTY_CUSTOMER_FORM);
+    },
+    onError: (error: ApiError) => {
+      handleApiError(error, 'Failed to add customer');
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Customer> }) =>
-      customersApi.update(id, data),
+    mutationFn: ({ id, data: customerData }: { id: string; data: Partial<Customer> }) =>
+      customersApi.update(id, customerData),
     onSuccess: () => {
       toast.success('Customer updated!');
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setEditingId(null);
       setIsCreating(false);
-      reset();
+      reset(EMPTY_CUSTOMER_FORM);
+    },
+    onError: (error: ApiError) => {
+      handleApiError(error, 'Failed to update customer');
     },
   });
 
@@ -62,24 +87,18 @@ export function Customers() {
     onSuccess: () => {
       toast.success('Customer deleted!');
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setDeleteTarget(null);
+    },
+    onError: (error: ApiError) => {
+      handleApiError(error, 'Failed to delete customer');
     },
   });
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setValue,
-  } = useForm<CustomerForm>({
-    resolver: zodResolver(customerSchema),
-  });
-
-  const onSubmit = (data: CustomerForm) => {
+  const onSubmit = (formData: CustomerInput) => {
     const customerData = {
-      ...data,
-      purchaseDate: data.purchaseDate || undefined,
-      purchasePrice: data.purchasePrice || undefined,
+      ...formData,
+      purchaseDate: formData.purchaseDate || undefined,
+      purchasePrice: formData.purchasePrice || undefined,
     };
 
     if (editingId) {
@@ -89,68 +108,69 @@ export function Customers() {
     }
   };
 
+  const handleAddNew = () => {
+    setEditingId(null);
+    reset(EMPTY_CUSTOMER_FORM);
+    setIsCreating(true);
+  };
+
   const handleEdit = (customer: Customer) => {
     setEditingId(customer._id);
     setIsCreating(true);
-    setValue('firstName', customer.firstName);
-    setValue('lastName', customer.lastName);
-    setValue('email', customer.email);
-    setValue('phone', customer.phone);
-    setValue('address', customer.address || '');
-    setValue('purchaseDate', customer.purchaseDate?.split('T')[0] || '');
-    setValue('purchasePrice', customer.purchasePrice || undefined);
-    setValue('notes', customer.notes || '');
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this customer?')) {
-      deleteMutation.mutate(id);
-    }
+    reset({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address ?? '',
+      purchaseDate: customer.purchaseDate?.split('T')[0] ?? '',
+      purchasePrice: customer.purchasePrice ?? undefined,
+      notes: customer.notes ?? '',
+    });
   };
 
   const handleCancel = () => {
     setIsCreating(false);
     setEditingId(null);
-    reset();
+    reset(EMPTY_CUSTOMER_FORM);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">
-            Customer <span className="text-gold">Database</span>
-          </h1>
-          <div className="w-20 h-1 bg-gradient-gold mt-2"></div>
-          <p className="text-gray-600 mt-2">Track and manage your past clients</p>
-        </div>
+        <PageHeader
+          title="Customer"
+          accent="Database"
+          description="Track and manage your past clients"
+        />
 
         {/* Search and Actions */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border-2 border-gold/10">
+        <Card className="mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
+            <div className="flex-1 w-full">
               <FormInput
-                label="🔍 Search Customers"
+                label="Search Customers"
                 placeholder="Search by name, email, or phone"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             {!isCreating && (
-              <Button onClick={() => setIsCreating(true)} size="lg">
-                ➕ Add Customer
+              <Button onClick={handleAddNew} size="lg">
+                <Plus className="h-5 w-5" aria-hidden="true" />
+                Add Customer
               </Button>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Add/Edit Form */}
         {isCreating && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border-2 border-gold/20">
+          <Card padding="lg" className="mb-8 border-gold/20 shadow-xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              {editingId ? '✏️ Edit Customer' : '➕ Add New Customer'}
+              {editingId ? 'Edit Customer' : 'Add New Customer'}
             </h2>
-            <div className="w-20 h-1 bg-gradient-gold mb-6"></div>
+            <div className="w-20 h-1 bg-gradient-gold mb-6 rounded-full"></div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -170,11 +190,7 @@ export function Customers() {
                   {...register('email')}
                   error={errors.email?.message}
                 />
-                <FormInput
-                  label="Phone"
-                  {...register('phone')}
-                  error={errors.phone?.message}
-                />
+                <FormInput label="Phone" {...register('phone')} error={errors.phone?.message} />
                 <FormInput
                   label="Purchase Date"
                   type="date"
@@ -189,11 +205,7 @@ export function Customers() {
                 />
               </div>
 
-              <FormInput
-                label="Address"
-                {...register('address')}
-                error={errors.address?.message}
-              />
+              <FormInput label="Address" {...register('address')} error={errors.address?.message} />
 
               <FormTextarea
                 label="Notes"
@@ -203,75 +215,70 @@ export function Customers() {
                 placeholder="Any special notes about this customer..."
               />
 
-              <div className="flex space-x-4">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   type="submit"
                   size="lg"
                   isLoading={createMutation.isPending || updateMutation.isPending}
+                  loadingText="Saving..."
                 >
-                  {editingId ? '💾 Update' : '✨ Add'} Customer
+                  {editingId ? (
+                    <Save className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <Plus className="h-5 w-5" aria-hidden="true" />
+                  )}
+                  {editingId ? 'Update' : 'Add'} Customer
                 </Button>
                 <Button type="button" variant="outline" size="lg" onClick={handleCancel}>
-                  ✕ Cancel
+                  Cancel
                 </Button>
               </div>
             </form>
-          </div>
+          </Card>
         )}
 
         {/* Customer List */}
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-gold mx-auto"></div>
-            <p className="mt-4 text-gray-700 font-medium">Loading customers...</p>
-          </div>
-        ) : data?.data.customers.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl shadow-xl border-2 border-gold/20">
-            <svg
-              className="mx-auto h-16 w-16 text-gold"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <h3 className="mt-4 text-lg font-bold text-gray-900">No customers yet</h3>
-            <p className="mt-2 text-sm text-gray-600">
-              {searchQuery
-                ? 'No customers match your search'
-                : 'Add customers as you close deals'}
-            </p>
-          </div>
+          <TableSkeleton rows={5} />
+        ) : isError ? (
+          <ErrorState
+            title="Unable to load customers"
+            description="Something went wrong while fetching your customers. Please try again."
+            onRetry={() => refetch()}
+          />
+        ) : !customers || customers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No customers yet"
+            description={
+              searchQuery ? 'No customers match your search' : 'Add customers as you close deals'
+            }
+          />
         ) : (
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-gold/20">
+          <Card padding="none" className="overflow-hidden border-gold/20 shadow-xl">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gradient-to-r from-gold/10 to-gold/5">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      👤 Customer
+                      Customer
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      📧 Contact
+                      Contact
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      🏠 Property
+                      Property
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      💰 Purchase
+                      Purchase
                     </th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">
-                      ⚙️ Actions
+                      Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {data?.data.customers.map((customer) => {
+                  {customers.map((customer) => {
                     const listing = customer.listingId as Listing | undefined;
                     return (
                       <tr key={customer._id} className="hover:bg-gray-50">
@@ -316,19 +323,22 @@ export function Customers() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right text-sm font-medium space-x-3">
-                          <button
-                            onClick={() => handleEdit(customer)}
-                            className="text-gold hover:text-gold-dark font-semibold transition-colors"
-                          >
-                            ✏️ Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(customer._id)}
-                            className="text-red-600 hover:text-red-800 font-semibold transition-colors"
-                          >
-                            🗑️ Delete
-                          </button>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(customer)}>
+                              <Pencil className="h-4 w-4" aria-hidden="true" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:bg-red-50"
+                              onClick={() => setDeleteTarget(customer)}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              Delete
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -337,17 +347,31 @@ export function Customers() {
               </table>
             </div>
 
-            {data && data.data.customers.length > 0 && (
-              <div className="bg-gold/5 px-6 py-4 border-t border-gold/20">
-                <p className="text-sm text-gray-600">
-                  📊 Total Customers: <span className="font-bold text-gold">{data.data.customers.length}</span>
-                </p>
-              </div>
-            )}
-          </div>
+            <div className="bg-gold/5 px-6 py-4 border-t border-gold/20">
+              <p className="text-sm text-gray-600">
+                Total Customers:{' '}
+                <span className="font-bold text-gold">{customers.length}</span>
+              </p>
+            </div>
+          </Card>
         )}
+
+        {/* Delete Confirmation */}
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget._id)}
+          title="Delete customer?"
+          description={
+            deleteTarget
+              ? `${deleteTarget.firstName} ${deleteTarget.lastName} will be permanently removed from your customer database.`
+              : undefined
+          }
+          confirmLabel="Delete"
+          danger
+          isLoading={deleteMutation.isPending}
+        />
       </div>
     </div>
   );
 }
-

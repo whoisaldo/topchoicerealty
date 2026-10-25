@@ -1,11 +1,14 @@
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
+import { MapPin, Phone } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { loginSchema, LoginInput } from '../lib/schemas';
-import { FormInput } from '../components/FormInput';
+import { ApiError, handleApiError } from '../lib/errorHandler';
 import { Button } from '../components/Button';
+import { Card } from '../components/Card';
+import { FormInput } from '../components/FormInput';
 import profileImage from '../assets/topchoicerealtypfp.jpg';
 
 export function Login() {
@@ -21,7 +24,7 @@ export function Login() {
   });
 
   if (isAuthenticated) {
-    navigate('/dashboard');
+    return <Navigate to="/dashboard" replace />;
   }
 
   const onSubmit = async (data: LoginInput) => {
@@ -29,23 +32,13 @@ export function Login() {
       await login(data.email, data.password);
       toast.success('Login successful!');
       navigate('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Login failed');
-    }
-  };
-
-  const handleQuickLogin = async () => {
-    try {
-      await login('john.doe@topchoicerealty.com', 'test12345');
-      toast.success('Quick login successful!');
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Quick login failed');
+    } catch (error) {
+      handleApiError(error as ApiError, 'Login failed');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-dark flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl w-full">
         <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Left Side - Branding & Profile */}
@@ -60,13 +53,24 @@ export function Login() {
               </div>
               <div className="space-y-4">
                 <div>
-                  <h1 className="text-5xl font-bold text-gold tracking-wider mb-2">TOP CHOICE</h1>
+                  <h1 className="font-display text-5xl font-bold text-gold tracking-wider mb-2">
+                    TOP CHOICE
+                  </h1>
                   <p className="text-gold/80 text-lg tracking-widest">REALTY LLC</p>
                 </div>
                 <div className="border-t border-gold/30 pt-4">
                   <p className="text-gray-300 text-lg mb-2">Our Passion is Our Clients</p>
-                  <p className="text-gold/90 text-sm">🏠 Serving New York & New Jersey</p>
-                  <p className="text-gold font-semibold text-xl mt-4">📞 929-488-3666</p>
+                  <p className="flex items-center justify-center gap-2 text-gold/90 text-sm">
+                    <MapPin className="h-4 w-4" aria-hidden="true" />
+                    Serving New York &amp; New Jersey
+                  </p>
+                  <a
+                    href="tel:929-488-3666"
+                    className="mt-4 flex items-center justify-center gap-2 text-gold font-semibold text-xl transition-colors hover:text-gold-light"
+                  >
+                    <Phone className="h-5 w-5" aria-hidden="true" />
+                    929-488-3666
+                  </a>
                 </div>
               </div>
             </div>
@@ -74,7 +78,7 @@ export function Login() {
 
           {/* Right Side - Login Form */}
           <div>
-            <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 border-2 border-gold/20">
+            <Card padding="lg" className="md:p-10 border-gold/20 shadow-2xl">
               <div className="text-center mb-8">
                 <div className="inline-block md:hidden mb-4">
                   <img
@@ -86,10 +90,8 @@ export function Login() {
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
                   Agent <span className="text-gold">Login</span>
                 </h2>
-                <div className="w-16 h-1 bg-gradient-gold mx-auto mb-4"></div>
-                <p className="text-gray-600">
-                  Access your dashboard and manage listings
-                </p>
+                <div className="w-16 h-1 bg-gradient-gold mx-auto mb-4 rounded-full"></div>
+                <p className="text-gray-600">Access your dashboard and manage listings</p>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -97,6 +99,7 @@ export function Login() {
                   label="Email Address"
                   type="email"
                   placeholder="agent@topchoicerealty.com"
+                  autoComplete="email"
                   {...register('email')}
                   error={errors.email?.message}
                 />
@@ -105,42 +108,22 @@ export function Login() {
                   label="Password"
                   type="password"
                   placeholder="••••••••"
+                  autoComplete="current-password"
                   {...register('password')}
                   error={errors.password?.message}
                 />
 
-                <Button type="submit" className="w-full" size="lg" isLoading={isSubmitting}>
+                <Button
+                  type="submit"
+                  fullWidth
+                  size="lg"
+                  isLoading={isSubmitting}
+                  loadingText="Signing in..."
+                >
                   Sign In to Dashboard
                 </Button>
               </form>
-
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Quick Access</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleQuickLogin}
-                  type="button"
-                  className="mt-4 w-full px-4 py-3 border-2 border-gold/30 rounded-lg text-gray-700 hover:bg-gold/5 hover:border-gold transition-all font-medium"
-                >
-                  🚀 Demo Login (John Doe)
-                </button>
-              </div>
-
-              <div className="mt-6 p-4 bg-gradient-to-r from-gold/10 to-gold/5 rounded-lg border border-gold/20">
-                <p className="text-sm text-gray-700 font-medium mb-2">📝 Demo Credentials:</p>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p>• john.doe@topchoicerealty.com / test12345</p>
-                  <p>• jane.lee@topchoicerealty.com / test12345</p>
-                </div>
-              </div>
-            </div>
+            </Card>
 
             <p className="text-center mt-6 text-gray-400 text-sm">
               Protected by session-based authentication
@@ -151,4 +134,3 @@ export function Login() {
     </div>
   );
 }
-

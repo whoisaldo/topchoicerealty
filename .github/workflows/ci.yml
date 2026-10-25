@@ -16,12 +16,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          # pnpm-lock.yaml is lockfileVersion 9.0, which pnpm 8 cannot read.
+          version: 10
 
       - name: Get pnpm store directory
         shell: bash
@@ -29,7 +30,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -47,7 +48,3 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-      - name: Build success
-        run: echo "✅ Build completed successfully!"
-

@@ -62,7 +62,7 @@ export function handleApiError(error: ApiError, fallbackMessage = 'An error occu
 }
 
 export function isNetworkError(error: ApiError): boolean {
-  return !error.response && error.message?.includes('Network Error');
+  return !error.response && error.message?.includes('Network Error') === true;
 }
 
 export function isAuthError(error: ApiError): boolean {
